@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Kitchen sink &ndash; AdGuard Home setup guide</title>
+
+    <!-- Same stylesheets, same order as index.html. Missing files 404 harmlessly. -->
+    <link rel="stylesheet" href="../styles/tokens.css" />
+    <link rel="stylesheet" href="../styles/base.css" />
+    <link rel="stylesheet" href="../styles/layout.css" />
+    <link rel="stylesheet" href="../styles/components.css" />
+    <link rel="stylesheet" href="../styles/overrides.css" />
+
+    <style>
+      /* Harness chrome only. Prefixed .ks- so it can never collide with site classes. */
+      .ks-bar {
+        position: sticky;
+        top: 0;
+        z-index: 200;
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 10px clamp(16px, 3vw, 40px);
+        background: #111;
+        color: #fff;
+        font: 13px/1.4 ui-sans-serif, system-ui, sans-serif;
+      }
+      .ks-bar b {
+        font-size: 14px;
+      }
+      .ks-bar button {
+        font: inherit;
+        font-weight: 600;
+        padding: 5px 11px;
+        border: 1px solid #555;
+        border-radius: 999px;
+        background: #222;
+        color: #fff;
+        cursor: pointer;
+      }
+      .ks-bar button[aria-pressed='true'] {
+        background: #fff;
+        color: #111;
+        border-color: #fff;
+      }
+      .ks-bar .ks-sp {
+        flex: 1;
+      }
+      .ks-sec {
+        padding: 0 clamp(16px, 3vw, 40px);
+        margin: 40px auto;
+        max-width: 1640px;
+      }
+      .ks-t {
+        font: 700 12px/1 ui-sans-serif, system-ui, sans-serif;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        opacity: 0.55;
+        margin: 0 0 12px;
+        padding-bottom: 6px;
+        border-bottom: 1px dashed currentColor;
+      }
+      .ks-hint {
+        font: 12px/1.5 ui-sans-serif, system-ui, sans-serif;
+        opacity: 0.6;
+        margin: -6px 0 12px;
+      }
+      .ks-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      /* token swatch grid */
+      .ks-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        gap: 8px;
+      }
+      .ks-tok {
+        border: 1px solid rgba(128, 128, 128, 0.35);
+        border-radius: 8px;
+        overflow: hidden;
+        font: 11px/1.35 ui-monospace, Menlo, Consolas, monospace;
+      }
+      .ks-tok i {
+        display: block;
+        height: 40px;
+        background-image: linear-gradient(45deg, #bbb 25%, transparent 25%, transparent 75%, #bbb 75%),
+          linear-gradient(45deg, #bbb 25%, #fff 25%, #fff 75%, #bbb 75%);
+        background-size: 12px 12px;
+        background-position:
+          0 0,
+          6px 6px;
+        position: relative;
+      }
+      .ks-tok i span {
+        position: absolute;
+        inset: 0;
+      }
+      .ks-tok b {
+        display: block;
+        padding: 4px 6px 1px;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+      }
+      .ks-tok u {
+        display: block;
+        padding: 0 6px 4px;
+        text-decoration: none;
+        opacity: 0.6;
+        overflow-wrap: anywhere;
+      }
+      .ks-scale {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .ks-scale div {
+        background: currentColor;
+        opacity: 0.25;
+        border-radius: 3px;
+        position: relative;
+      }
+      .ks-scale div::after {
+        content: attr(data-n);
+        position: absolute;
+        bottom: -18px;
+        left: 0;
+        font: 10px/1 ui-monospace, monospace;
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ks-bar">
+      <b>Kitchen sink</b>
+      <span id="ks-theme">
+        <button data-t="auto" aria-pressed="true">Auto</button>
+        <button data-t="light" aria-pressed="false">Light</button>
+        <button data-t="dark" aria-pressed="false">Dark</button>
+      </span>
+      <button id="ks-over" aria-pressed="false">body.over</button>
+      <span class="ks-sp"></span>
+      <span id="ks-w"></span>
+      <a href="contrast.html" style="color: #9cf">contrast audit &rarr;</a>
+    </div>
+
+    <!-- ============================================ tokens -->
+    <div class="ks-sec">
+      <p class="ks-t">Colour tokens</p>
+      <p class="ks-hint">
+        Auto-discovered from the loaded stylesheets. Checkerboard shows through translucent values. Non-colour tokens
+        are listed separately below.
+        <br /><b>If this says &ldquo;none found&rdquo;, you opened the file directly.</b> Chrome treats
+        <code>file://</code> stylesheets as opaque and blocks <code>cssRules</code>, so nothing can be enumerated. Serve
+        the folder instead &ndash; any static server will do &ndash; and reload. Everything below this section renders
+        correctly either way.
+      </p>
+      <div class="ks-grid" id="ks-colors"></div>
+    </div>
+
+    <div class="ks-sec">
+      <p class="ks-t">Non-colour tokens</p>
+      <div class="ks-grid" id="ks-other"></div>
+    </div>
+
+    <div class="ks-sec">
+      <p class="ks-t">Radius scale</p>
+      <div class="ks-row" id="ks-radius"></div>
+      <p class="ks-t" style="margin-top: 28px">Elevation</p>
+      <div class="ks-row" id="ks-elev"></div>
+    </div>
+
+    <!-- ============================================ typography -->
+    <div class="ks-sec">
+      <p class="ks-t">Typography</p>
+      <h1>Heading 1 &ndash; AdGuard Home,<em>set up properly.</em></h1>
+      <h2>Heading 2 &ndash; DNS server settings</h2>
+      <h3>Heading 3 &ndash; Which protocol</h3>
+      <h4>Heading 4 &ndash; Privacy first</h4>
+      <p class="lede">
+        Lede text. It filters ads and trackers for every device on your network, and it ships with defaults tuned for a
+        safe first boot rather than a working home. <strong>Bold inside a lede.</strong>
+      </p>
+      <p>
+        Body text with an <a href="#">inline link</a>, some <strong>bold</strong>, and a
+        <span class="nil">nil marker</span>.
+      </p>
+      <p class="note">A .note paragraph, used under tables.</p>
+      <footer>Footer text, the smallest thing on the page. <a href="#">With a link</a>.</footer>
+    </div>
+
+    <!-- ============================================ controls -->
+    <div class="ks-sec">
+      <p class="ks-t">Segmented control &middot; nav &middot; source chips</p>
+      <p class="ks-hint">Hover and focus states are live &ndash; tab through them. Selected states are class-driven.</p>
+      <div class="ks-row">
+        <div class="seg" role="group" aria-label="Theme sample">
+          <button aria-pressed="true">Auto</button>
+          <button aria-pressed="false">Light</button>
+          <button aria-pressed="false">Dark</button>
+        </div>
+      </div>
+      <div class="ks-row">
+        <nav class="nav">
+          <a href="#" class="act">Upstreams</a><a href="#">Server</a><a href="#">General</a><a href="#">Cache</a
+          ><a href="#">Encryption</a><a href="#">Blocklists</a>
+        </nav>
+      </div>
+      <div class="ks-row">
+        <div class="srcs">
+          <a href="#">Provider list &#8599;</a>
+          <a href="#">Upstream docs &#8599;</a>
+        </div>
+      </div>
+      <div class="ks-row">
+        <label class="sw" style="pointer-events: auto"><input type="checkbox" /><span class="dot"></span></label>
+        <label class="sw" style="pointer-events: auto"
+          ><input type="checkbox" checked /><span class="dot"></span
+        ></label>
+        <span style="font-size: 13px; opacity: 0.6">off / on</span>
+      </div>
+    </div>
+
+    <!-- ============================================ dropdown -->
+    <div class="ks-sec">
+      <p class="ks-t">Dropdown (post-JS markup)</p>
+      <p class="ks-hint">Left is closed, right is forced open so the menu and selected option are visible.</p>
+      <div class="ks-row" style="align-items: flex-start; min-height: 240px">
+        <span class="dd">
+          <button type="button" class="dd-btn" aria-haspopup="listbox" aria-expanded="false">512 MB</button>
+          <div class="dd-menu" role="listbox">
+            <div class="dd-opt" role="option" aria-selected="false">128 MB</div>
+            <div class="dd-opt" role="option" aria-selected="true">512 MB</div>
+          </div>
+        </span>
+        <span class="dd open">
+          <button type="button" class="dd-btn" aria-haspopup="listbox" aria-expanded="true">Typical</button>
+          <div class="dd-menu" role="listbox">
+            <div class="dd-opt" role="option" aria-selected="false">Lean</div>
+            <div class="dd-opt" role="option" aria-selected="true">Typical</div>
+            <div class="dd-opt" role="option" aria-selected="false">Loaded</div>
+          </div>
+        </span>
+      </div>
+    </div>
+
+    <!-- ============================================ cards -->
+    <div class="ks-sec">
+      <p class="ks-t">Rule cards</p>
+      <div class="rules">
+        <div class="rule">
+          <i>01</i>
+          <h4>Encrypt the connection</h4>
+          <p>Pick an upstream address that starts with quic://, https:// or tls://.</p>
+        </div>
+        <div class="rule">
+          <i>02</i>
+          <h4>Let only AdGuard Home block things</h4>
+          <p>Your upstream servers must not do any blocking of their own.</p>
+        </div>
+        <div class="rule">
+          <i>03</i>
+          <h4>One big list is enough</h4>
+          <p>The lists in the General group are 80&ndash;95% the same domains.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="ks-sec">
+      <p class="ks-t">Preset cards &middot; code blocks</p>
+      <p class="ks-hint">Third code block carries .copied to show the success state.</p>
+      <div class="pres">
+        <div class="pre">
+          <div class="pre-h">
+            <h4>Balanced</h4>
+            <p>Fast almost anywhere, with one strict no-log operator in the mix.</p>
+          </div>
+          <div class="pre-f">
+            <span>Upstream DNS servers</span><code>quic://unfiltered.adguard-dns.com</code
+            ><code>https://dns.mullvad.net/dns-query</code>
+          </div>
+        </div>
+        <div class="pre best">
+          <div class="pre-h">
+            <h4>Privacy first</h4>
+            <p>Only operators that keep no logs at all. This card carries .best.</p>
+          </div>
+          <div class="pre-f"><span>Fallback DNS servers</span><code class="copied">https://odvr.nic.cz/doh</code></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ table -->
+    <div class="ks-sec">
+      <p class="ks-t">Table &ndash; sortable headers, zebra, selected rows, pills</p>
+      <p class="ks-hint">
+        Row 2 carries .on (selected). Header 1 carries .act, header 2 .act.up. Below 900px this becomes the mobile card
+        treatment.
+      </p>
+      <div class="wrap">
+        <table data-cols="Status|List|Rules|Memory|Links|Verdict|Notes">
+          <thead>
+            <tr>
+              <th class="c-st">Status</th>
+              <th class="c-nm act" data-k="i" data-num>List</th>
+              <th class="c-num act up" data-k="rules" data-num>Rules</th>
+              <th class="c-num" data-k="ram" data-num>Memory</th>
+              <th class="c-lk">Links</th>
+              <th class="c-vd">Verdict</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-rules="1">
+              <td class="c-st" data-l="Status">
+                <label class="sw"><input type="checkbox" /><span class="dot"></span></label>
+              </td>
+              <td class="c-nm" data-l="List"><span class="nm">1Hosts (Lite)</span></td>
+              <td class="c-num" data-l="Rules"><span class="big">102 852</span></td>
+              <td class="c-num" data-l="Memory"><span class="big">10<i>MB</i></span></td>
+              <td class="c-lk" data-l="Links">
+                <a href="#"
+                  ><svg viewBox="0 0 16 16" aria-hidden="true">
+                    <circle cx="8" cy="8" r="6.2" />
+                    <path d="M1.8 8h12.4M8 1.8c1.7 1.8 2.6 4 2.6 6.2S9.7 12.4 8 14.2C6.3 12.4 5.4 10.2 5.4 8S6.3 3.6 8 1.8Z" /></svg
+                  ><span>Project</span></a
+                >
+              </td>
+              <td class="c-vd" data-l="Verdict"><span class="pill p-good">Fine</span></td>
+              <td class="c-tx" data-l="Notes">A zebra-striped odd row. Hover me.</td>
+            </tr>
+            <tr class="on" data-rules="1">
+              <td class="c-st" data-l="Status">
+                <label class="sw"><input type="checkbox" checked /><span class="dot"></span></label>
+              </td>
+              <td class="c-nm" data-l="List"><span class="nm">AdGuard DNS filter</span></td>
+              <td class="c-num" data-l="Rules"><span class="big em">62 411</span></td>
+              <td class="c-num" data-l="Memory"><span class="big">6<i>MB</i></span></td>
+              <td class="c-lk" data-l="Links"><a href="#"><span>Rule file</span></a></td>
+              <td class="c-vd" data-l="Verdict"><span class="pill p-best">Preferred</span></td>
+              <td class="c-tx" data-l="Notes">
+                This row carries <span class="nm">.on</span>. Toggle body.over in the top bar.
+              </td>
+            </tr>
+            <tr data-rules="1">
+              <td class="c-st" data-l="Status">
+                <label class="sw"><input type="checkbox" /><span class="dot"></span></label>
+              </td>
+              <td class="c-nm" data-l="List"><span class="nm">Plain DNS over UDP</span> <span class="sub">(none)</span></td>
+              <td class="c-num" data-l="Rules"><span class="nil">&ndash;</span></td>
+              <td class="c-num" data-l="Memory"><span class="nil">&ndash;</span></td>
+              <td class="c-lk" data-l="Links"><span class="nil">&ndash;</span></td>
+              <td class="c-vd" data-l="Verdict"><span class="pill p-avoid">Not upstream</span></td>
+              <td class="c-tx" data-l="Notes">
+                <p>Adds no privacy at all.</p>
+                <p class="warn-i">A warning line, coloured with --warn.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============================================ paired rows -->
+    <div class="ks-sec">
+      <p class="ks-t">Option / description paired rows</p>
+      <p class="ks-hint">
+        On the real page a JS pass equalises the two columns row by row. Without JS here, misalignment is expected until
+        the subgrid rework lands.
+      </p>
+      <div class="wrap">
+        <table data-cols="Setting|Options|What it does">
+          <thead>
+            <tr>
+              <th class="c-nm">Setting</th>
+              <th class="c-opt">Options</th>
+              <th>What it does</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-pair>
+              <td class="c-nm" data-l="Setting"><span class="nm">Upstream mode</span></td>
+              <td class="c-opt" data-l="Options">
+                <div class="orow rec">Load balancing</div>
+                <div class="orow">Parallel requests</div>
+                <div class="orow">Fastest IP address</div>
+              </td>
+              <td class="c-tx" data-l="What it does">
+                <div class="orow"><p>Sends each query to one server, chosen by a weighted algorithm.</p></div>
+                <div class="orow"><p>Asks every server at once. Fastest, but multiplies the traffic each operator sees.</p></div>
+                <div class="orow"><p>Measures and keeps the quickest.</p></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============================================ meter -->
+    <div class="ks-sec">
+      <p class="ks-t">Budget meter &ndash; under, tight, over, unlimited</p>
+      <div class="budget" style="position: static; padding: 0; margin: 0 0 12px">
+        <div class="budget-in">
+          <div class="stat"><b>19</b><s>lists</s></div>
+          <div class="stat hide-s"><b>1 204 118</b><s>rules</s></div>
+          <div class="meter"><div class="bar"><div class="bar-fill" style="width: 46%"></div></div></div>
+          <div class="stat"><b>118<i> MB</i></b><s>of 233 MB</s></div>
+          <span class="verdict">fits</span>
+        </div>
+      </div>
+      <div class="budget" style="position: static; padding: 0; margin: 0 0 12px">
+        <div class="budget-in">
+          <div class="stat"><b>26</b><s>lists</s></div>
+          <div class="meter"><div class="bar over"><div class="bar-fill" style="width: 100%"></div></div></div>
+          <div class="stat"><b>301<i> MB</i></b><s>of 233 MB</s></div>
+          <span class="verdict bad">does not fit</span>
+        </div>
+      </div>
+      <div class="budget" style="position: static; padding: 0; margin: 0">
+        <div class="budget-in">
+          <div class="stat"><b>58</b><s>lists</s></div>
+          <div class="meter"><div class="bar unl"><div class="bar-fill"></div></div></div>
+          <div class="stat"><b>612<i> MB</i></b><s>used</s></div>
+          <span class="verdict">everything fits</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ks-sec">
+      <p class="ks-t">Pills</p>
+      <div class="ks-row">
+        <span class="pill p-best">Preferred</span>
+        <span class="pill p-good">Fine</span>
+        <span class="pill p-avoid">Not upstream</span>
+        <span class="verdict">fits</span>
+        <span class="verdict bad">won't run</span>
+      </div>
+    </div>
+
+    <div style="height: 60vh"></div>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+
+        /* theme switcher */
+        var seg = document.getElementById('ks-theme');
+        seg.addEventListener('click', function (e) {
+          var b = e.target.closest('button');
+          if (!b) return;
+          root.setAttribute('data-theme', b.dataset.t);
+          seg.querySelectorAll('button').forEach(function (x) {
+            x.setAttribute('aria-pressed', String(x === b));
+          });
+          render();
+        });
+
+        /* body.over toggle */
+        var ov = document.getElementById('ks-over');
+        ov.addEventListener('click', function () {
+          var on = document.body.classList.toggle('over');
+          ov.setAttribute('aria-pressed', String(on));
+        });
+
+        /* viewport readout, so breakpoint checks need no devtools */
+        var w = document.getElementById('ks-w');
+        function size() {
+          var px = window.innerWidth;
+          var band = px < 600 ? 'compact' : px < 840 ? 'medium' : px < 900 ? 'medium/card-cut' : px < 1200 ? 'expanded' : px < 1600 ? 'large' : 'x-large';
+          w.textContent = px + 'px · ' + band;
+        }
+        window.addEventListener('resize', size);
+        size();
+
+        /* token discovery, mirroring dev/contrast.html */
+        function discover() {
+          var names = {};
+          function walk(rules) {
+            for (var i = 0; i < rules.length; i++) {
+              var r = rules[i];
+              if (r.style) for (var j = 0; j < r.style.length; j++) if (r.style[j].indexOf('--') === 0) names[r.style[j]] = 1;
+              if (r.cssRules) walk(r.cssRules);
+            }
+          }
+          for (var s = 0; s < document.styleSheets.length; s++) {
+            try {
+              walk(document.styleSheets[s].cssRules);
+            } catch (e) {}
+          }
+          return Object.keys(names).sort();
+        }
+
+        var probe = document.createElement('div');
+        probe.style.display = 'none';
+        document.body.appendChild(probe);
+
+        function asColor(name) {
+          probe.style.color = 'rgb(1,2,3)';
+          probe.style.color = 'var(' + name + ')';
+          var got = getComputedStyle(probe).color;
+          return got === 'rgb(1, 2, 3)' ? null : got;
+        }
+        function raw(name) {
+          return getComputedStyle(root).getPropertyValue(name).trim();
+        }
+
+        function esc(s) {
+          return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        }
+
+        var names = discover();
+
+        function render() {
+          var colors = [];
+          var other = [];
+          names.forEach(function (n) {
+            var c = asColor(n);
+            if (c) {
+              colors.push(
+                '<div class="ks-tok"><i><span style="background:' + c + '"></span></i><b>' + esc(n) + '</b><u>' + esc(c) + '</u></div>'
+              );
+            } else {
+              var v = raw(n);
+              if (v) other.push('<div class="ks-tok"><b>' + esc(n) + '</b><u>' + esc(v) + '</u></div>');
+            }
+          });
+          document.getElementById('ks-colors').innerHTML = colors.join('') || '<p class="ks-hint">none found</p>';
+          document.getElementById('ks-other').innerHTML = other.join('') || '<p class="ks-hint">none found</p>';
+
+          // radii
+          var rad = names.filter(function (n) {
+            return /^--shape-/.test(n);
+          });
+          document.getElementById('ks-radius').innerHTML =
+            rad
+              .map(function (n) {
+                return (
+                  '<div style="width:88px;height:64px;background:var(--surface-container,#8884);border-radius:var(' +
+                  n +
+                  ');display:flex;align-items:flex-end;justify-content:center;font:10px/2 ui-monospace,monospace">' +
+                  esc(n) +
+                  '</div>'
+                );
+              })
+              .join('') || '<p class="ks-hint">none found</p>';
+
+          // elevation
+          var el = names.filter(function (n) {
+            return /^--elev-/.test(n);
+          });
+          document.getElementById('ks-elev').innerHTML =
+            el
+              .map(function (n) {
+                return (
+                  '<div style="width:120px;height:64px;background:var(--surface-container-lowest,#fff);box-shadow:var(' +
+                  n +
+                  ');border-radius:var(--shape-md,12px);display:flex;align-items:flex-end;justify-content:center;font:10px/2 ui-monospace,monospace">' +
+                  esc(n) +
+                  '</div>'
+                );
+              })
+              .join('') || '<p class="ks-hint">none found</p>';
+        }
+
+        render();
+      })();
+    </script>
+  </body>
+</html>

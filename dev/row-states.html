@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Table row states</title>
+
+    <link rel="stylesheet" href="../styles/tokens.css" />
+    <link rel="stylesheet" href="../styles/base.css" />
+    <link rel="stylesheet" href="../styles/layout.css" />
+    <link rel="stylesheet" href="../styles/components.css" />
+    <link rel="stylesheet" href="../styles/overrides.css" />
+
+    <style>
+      /*
+        Every background a table row can end up with, side by side, so zebra and hover can
+        be compared directly instead of hunted for in a 21,000px page.
+
+        :hover cannot be captured in a screenshot, so the rows below paint the same
+        declarations the real rules use. If those rules change, change these to match -
+        this page is a viewer, not a second source of truth.
+      */
+      .rs-wrap {
+        padding: var(--space-32) clamp(var(--space-20), 4vw, var(--space-56));
+      }
+      .rs-h {
+        font: 700 var(--text-footnote) / 1 var(--font-sans);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--label-3);
+        margin: var(--space-32) 0 var(--space-12);
+      }
+      .rs-h:first-child {
+        margin-top: 0;
+      }
+      .rs-note {
+        font: var(--text-footnote) / 1.5 var(--font-sans);
+        color: var(--label-2);
+        margin: 0 0 var(--space-16);
+        max-width: 60ch;
+      }
+      .rs-lbl {
+        font: 600 var(--text-caption) / 1 var(--font-mono);
+        color: var(--label-3);
+      }
+      /* The real declarations, applied by class so they can be screenshotted.
+         !important is required, not lazy: the live rules are keyed on tr:nth-child(even)
+         and tr:hover, which outrank a bare class, so without it this page would show the
+         production zebra instead of the state it claims to be showing. */
+      .is-hover {
+        background-image: linear-gradient(var(--state-hover), var(--state-hover)) !important;
+      }
+      .is-press {
+        background-image: linear-gradient(var(--state-press), var(--state-press)) !important;
+      }
+      .is-zebra {
+        background-image: linear-gradient(var(--fill-4), var(--fill-4)) !important;
+      }
+      .is-zebra-hover {
+        background-image: linear-gradient(var(--state-hover), var(--state-hover)),
+          linear-gradient(var(--fill-4), var(--fill-4)) !important;
+      }
+      .is-sel {
+        background-color: var(--success-surface) !important;
+      }
+      .is-sel-zebra {
+        background-color: var(--success-surface) !important;
+        background-image: linear-gradient(var(--fill-4), var(--fill-4)) !important;
+      }
+      .is-over {
+        background-color: var(--error-surface) !important;
+      }
+      .is-over-zebra {
+        background-color: var(--error-surface) !important;
+        background-image: linear-gradient(var(--fill-4), var(--fill-4)) !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="rs-wrap">
+      <p class="rs-h">Table row backgrounds</p>
+      <p class="rs-note">
+        Zebra is the quietest step by design - it helps the eye track across a wide row, nothing more.
+        Hover and selection sit at a similar weight (about 1.14 above the row in light) and are told apart by
+        hue, not by loudness: indigo is transient, green is identity. Hovering a selected row stacks both. The
+        code cards matter too: they sit inside these cells, so their separation from the row has to survive
+        every row state.
+      </p>
+      <div class="wrap">
+        <table data-cols="State|Sample">
+          <thead>
+            <tr>
+              <th class="c-nm">State</th>
+              <th>Sample</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="c-nm"><span class="rs-lbl">odd (card)</span></td><td class="c-tx"><code>https://dns.example.net/dns-query</code></td></tr>
+            <tr class="is-zebra"><td class="c-nm"><span class="rs-lbl">even (zebra)</span></td><td class="c-tx"><code>tls://dns.example.net</code></td></tr>
+            <tr class="is-hover"><td class="c-nm"><span class="rs-lbl">odd + hover</span></td><td class="c-tx"><code>https://dns.example.net/dns-query</code></td></tr>
+            <tr class="is-zebra-hover"><td class="c-nm"><span class="rs-lbl">even + hover</span></td><td class="c-tx"><code>tls://dns.example.net</code></td></tr>
+            <tr class="is-press"><td class="c-nm"><span class="rs-lbl">pressed</span></td><td class="c-tx"><code>193.17.47.1</code></td></tr>
+            <tr class="is-sel"><td class="c-nm"><span class="rs-lbl">selected</span></td><td class="c-tx">--success-surface. A 10% tint, not a fill, so the surface still shows through under it.</td></tr>
+            <tr class="is-sel-zebra"><td class="c-nm"><span class="rs-lbl">selected, even row</span></td><td class="c-tx">The same zebra step as an unselected even row. Identity is the colour; the stripe rides on top of it.</td></tr>
+            <tr class="is-over"><td class="c-nm"><span class="rs-lbl">over budget</span></td><td class="c-tx">--error-surface.</td></tr>
+            <tr class="is-over-zebra"><td class="c-nm"><span class="rs-lbl">over, even row</span></td><td class="c-tx">Same again - an over-budget row is a selected row, so it stripes the same way.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="rs-h">Sticky bar, resting vs pinned</p>
+      <p class="rs-note">
+        At rest the meter is a solid card. It only becomes a translucent material once content is passing underneath
+        it, which is the point of the material in the first place.
+      </p>
+      <div class="budget" style="position: static; padding: 0; margin: 0 0 var(--space-16)">
+        <div class="budget-in">
+          <div class="stat"><b>19</b><s>lists</s></div>
+          <div class="meter"><div class="bar"><div class="bar-fill" style="width: 46%"></div></div></div>
+          <div class="stat"><b>118<i> MB</i></b><s>of 233 MB</s></div>
+          <span class="verdict">fits &mdash; resting</span>
+        </div>
+      </div>
+      <div class="budget stuck" style="position: static; padding: 0; margin: 0">
+        <div class="budget-in">
+          <div class="stat"><b>19</b><s>lists</s></div>
+          <div class="meter"><div class="bar"><div class="bar-fill" style="width: 46%"></div></div></div>
+          <div class="stat"><b>118<i> MB</i></b><s>of 233 MB</s></div>
+          <span class="verdict">fits &mdash; pinned</span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

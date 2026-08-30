@@ -1,0 +1,10 @@
+.idea/
+
+# Screenshots are regenerable: bash dev/shots.sh
+dev/shots/
+
+# Scratch files the screenshot script writes and cleans up
+__shot_*.html
+
+# npm has no dependencies here, but keep an accidental install out of the repo
+node_modules/

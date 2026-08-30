@@ -1,0 +1,44 @@
+/* ============================================================================
+   base.css
+   Reset, document defaults, links and the global focus ring.
+   ---------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--page);
+}
+/* Smooth scrolling is motion, so it has to be opt-in - the reduced-motion block
+   below cannot switch it off, because `transition` never governed it. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--label);
+  font-family: var(--font-sans);
+  font-size: var(--text-callout);
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+/* One visible focus ring for everything. Before this the stylesheet had exactly one
+   focus style (.dd-btn), so the nav, the theme switcher, source chips, table rows,
+   code blocks and all 58 list toggles were invisible to keyboard users.
+   Outlines follow the element's own border-radius, so pills stay pill-shaped. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

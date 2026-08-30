@@ -1,0 +1,31 @@
+{
+  "name": "adguard-home-setup-guide",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A single-page guide to configuring AdGuard Home, from upstream resolvers to blocklists.",
+  "homepage": "https://sergeibabko.github.io/AdGuard-Home-Setup-Guide/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SergeiBabko/AdGuard-Home-Setup-Guide.git"
+  },
+  "author": "Sergei Babko",
+  "keywords": [
+    "adguard-home",
+    "dns",
+    "blocklists",
+    "static-site"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "update": "node dev/refresh-counts.js --write && node dev/refresh-version.js --write && npm run check",
+    "check": "node dev/lint.js && node dev/contrast-check.js && node dev/check-links.js",
+
+    "dev:lint": "node dev/lint.js",
+    "dev:contrast": "node dev/contrast-check.js",
+    "dev:links": "node dev/check-links.js",
+    "dev:shots": "bash dev/shots.sh",
+    "dev:serve": "node dev/serve.js"
+  }
+}

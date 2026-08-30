@@ -1,0 +1,460 @@
+/* ============================================================================
+   overrides.css
+   Responsive breakpoints, user-preference media queries and late normalisers.
+   Loaded last, so anything here intentionally wins.
+   ---------------------------------------------------------------------------- */
+
+@media (max-width: 1100px) {
+  .rules {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .hero {
+    padding: var(--space-32) 0 var(--space-4);
+  }
+  .sec {
+    margin-top: var(--space-48);
+  }
+  .rules {
+    grid-template-columns: 1fr;
+  }
+  .nav {
+    width: auto;
+  }
+  table,
+  thead,
+  tbody,
+  tr,
+  td {
+    display: block;
+    min-width: 0;
+  }
+  thead {
+    display: none;
+  }
+  .wrap {
+    overflow: visible;
+    background: none;
+    border-radius: 0;
+  }
+  tbody tr {
+    background: var(--surface-container-lowest);
+    border-radius: var(--shape-lg);
+    margin-bottom: var(--space-12);
+    padding: var(--space-6) 0;
+    box-shadow: var(--elev-1);
+  }
+  tbody tr.on {
+    background: var(--success-surface);
+  }
+  /* Each cell becomes a label/value pair. A grid rather than a flex row with a fixed
+     84px label column: at that width the longer headers in the blocklist tables
+     ("Who should enable it", "Drawbacks", "Conflicts") wrapped to three or four lines
+     against a single line of value. max-content lets each label take the width it
+     needs, and the 7rem floor keeps the values aligned down the card. */
+  td {
+    border-bottom: 0;
+    padding: var(--space-8) var(--space-20);
+    display: grid;
+    grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+    gap: var(--space-12);
+    align-items: start;
+  }
+  td::before {
+    content: attr(data-l);
+    font-size: var(--text-caption);
+    color: var(--label-3);
+    padding-top: var(--space-2);
+  }
+  .c-num,
+  .c-st,
+  .c-nm,
+  .c-lk,
+  .c-sm,
+  .c-ad,
+  .c-opt {
+    width: auto;
+    text-align: left;
+  }
+  .c-nm {
+    padding-top: var(--space-6);
+    padding-bottom: var(--space-12);
+    margin-bottom: var(--space-6);
+  }
+  /* Cells whose value is long-form prose or a stack of links read better with the
+     label above rather than beside: one column instead of two. */
+  .c-lk,
+  .c-ad,
+  .c-opt,
+  .c-tx {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+  .c-lk a {
+    margin: 0;
+    padding: var(--space-6) var(--space-8);
+  }
+  .c-opt .pill {
+    align-self: flex-start;
+  }
+  /* the header row is hidden above, so sorting moves to these controls */
+  .sortbar {
+    display: flex;
+  }
+  /* A tighter stack on a phone. Redefining the tokens moves the nav, the meter and every
+     anchor's scroll-margin together, instead of three numbers drifting apart. */
+  :root {
+    --sticky-top: var(--space-8);
+    --sticky-gap: var(--space-6);
+  }
+  .navwrap {
+    padding: 0 var(--space-16);
+    margin: var(--space-16) 0 var(--space-4);
+  }
+  .budget {
+    padding: 0 var(--space-16);
+    margin: var(--space-8) 0 var(--space-4);
+  }
+  .budget-in {
+    padding: var(--space-12) var(--space-16);
+    gap: var(--space-12);
+    flex-wrap: nowrap;
+  }
+  .stat b {
+    font-size: var(--text-body);
+  }
+  .stat s {
+    font-size: var(--text-caption-2);
+  }
+  .budget .ramsel,
+  .budget .stat.hide-s {
+    display: none;
+  }
+  .meter {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .verdict {
+    font-size: var(--text-caption);
+    padding: var(--space-8) var(--space-12);
+  }
+  .devrow {
+    display: flex;
+  }
+  .srcs {
+    margin-top: var(--space-12);
+  }
+  body.over tbody tr.on {
+    background-color: var(--error-container);
+  }
+  .topline {
+    margin-bottom: var(--space-16);
+  }
+}
+/* ---------- material fallbacks ----------
+   Three separate reasons a bar must become opaque, and each needs saying explicitly.
+   Apple's own guidance is that a material degrades to a solid colour rather than to
+   nothing, so in every case below the bar keeps its shape and simply stops being
+   see-through. */
+
+/* 1. the engine cannot blur */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .navwrap.stuck .nav,
+  .budget.stuck .budget-in {
+    background: var(--material-tint-opaque);
+  }
+}
+
+/* 2. the reader asked for less transparency */
+@media (prefers-reduced-transparency: reduce) {
+  .navwrap.stuck .nav,
+  .budget.stuck .budget-in {
+    background: var(--material-tint-opaque);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* ---------- increased contrast ----------
+   Both design systems ask for this. Translucency and hairlines are the first things to
+   go: separators become opaque and gain weight, surfaces stop being see-through, and the
+   dimmest text tier steps up to the middle one so nothing relies on a subtle wash. */
+@media (prefers-contrast: more) {
+  :root {
+    --label-3: var(--label-2);
+    --separator: var(--separator-opaque);
+    --outline-variant: var(--outline);
+    --fill-4: var(--fill-3);
+    --state-opacity-hover: 0.14;
+    --state-opacity-press: 0.2;
+  }
+  .navwrap.stuck .nav,
+  .budget.stuck .budget-in {
+    background: var(--material-tint-opaque);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .wrap,
+  .rule,
+  .pre,
+  .dd-menu,
+  .budget-in {
+    border: 1px solid var(--outline);
+  }
+  :focus-visible {
+    outline-width: 3px;
+  }
+}
+
+/* ---------- forced colours ----------
+   Windows High Contrast replaces the palette wholesale, which erases anything that
+   conveys meaning through background colour alone. Two things here do exactly that: the
+   switch track and the meter fill. Without this they both vanish. */
+@media (forced-colors: active) {
+  .dot {
+    forced-color-adjust: none;
+    background: ButtonFace;
+    border: 1px solid ButtonBorder;
+  }
+  .sw input:checked ~ .dot {
+    background: Highlight;
+  }
+  .dot::after {
+    forced-color-adjust: none;
+    background: ButtonBorder;
+  }
+  .sw input:checked ~ .dot::after {
+    background: HighlightText;
+  }
+  .bar {
+    forced-color-adjust: none;
+    background: ButtonFace;
+    border: 1px solid ButtonBorder;
+  }
+  .bar-fill {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  .bar.over .bar-fill {
+    /* colour alone no longer distinguishes over-budget, so add a pattern */
+    background: repeating-linear-gradient(45deg, Highlight, Highlight 4px, ButtonFace 4px, ButtonFace 8px);
+  }
+  .nav,
+  .budget-in,
+  .navwrap.stuck .nav,
+  .budget.stuck .budget-in {
+    background: Canvas;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 1px solid CanvasText;
+  }
+  .nav a.act,
+  .seg button[aria-pressed="true"] {
+    background: Highlight;
+    color: HighlightText;
+  }
+  .pill,
+  .verdict {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Near-zero rather than `none` so transitionend still fires, and covering animation
+   and scroll-behavior, which the previous `transition: none` rule missed - the .dd-menu
+   keyframes and smooth anchor scrolling both used to run regardless of this setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* one text size for every table cell */
+td,
+td .nm,
+td .big,
+td .big i,
+td .sub,
+td .nil,
+td.c-sm,
+td .c-lk a,
+td a,
+td .warn-i,
+td code,
+td .pill {
+  font-size: var(--text-subhead);
+}
+td::before {
+  font-size: var(--text-subhead);
+}
+
+/* scrollbars
+   Firefox gets the standard properties. Chrome/Safari ignore ::-webkit-scrollbar-*
+   whenever scrollbar-width/scrollbar-color are set, so those are reset inside the
+   @supports block, letting the webkit rules (which can style :hover) take over. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--thumb) transparent;
+}
+@supports selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+    background: transparent;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+    border: 0;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--thumb);
+    border-radius: var(--shape-full);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    min-height: 36px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+    background-clip: content-box;
+    border: 3px solid transparent;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* custom dropdown */
+.dd {
+  position: relative;
+  display: inline-block;
+}
+.dd > select {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+}
+.dd-btn {
+  font: inherit;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--label);
+  background: var(--surface-container);
+  border: 0;
+  border-radius: var(--shape-sm);
+  min-height: 38px;
+  padding: var(--space-8) var(--space-32) var(--space-8) var(--space-12);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-medium) var(--ease-standard);
+}
+/* Hover is the shared state layer in components.css. Only the *open* state, below,
+   still swaps the background, because that is identity rather than interaction. */
+.dd-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.dd-btn::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: calc(-1 * var(--space-6));
+  border-right: 1.8px solid var(--label-2);
+  border-bottom: 1.8px solid var(--label-2);
+  transform: rotate(45deg);
+  transition: transform var(--dur-medium) var(--ease-standard);
+}
+.dd.open .dd-btn::after {
+  transform: rotate(-135deg);
+  margin-top: calc(-1 * var(--space-2));
+}
+.dd.open .dd-btn {
+  background: var(--surface-container-highest);
+  box-shadow: var(--elev-1);
+}
+.dd-menu {
+  position: absolute;
+  z-index: var(--z-popover);
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  /* Opaque, not a material: a menu has to stay readable over whatever it covers. */
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-md);
+  box-shadow: var(--elev-2);
+  padding: var(--space-6);
+  display: none;
+  max-height: 290px;
+  overflow: auto;
+}
+.dd.open .dd-menu {
+  display: block;
+  animation: ddin 0.16s var(--ease-standard);
+}
+@keyframes ddin {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.dd-opt {
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  color: var(--label);
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--shape-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+.dd-opt[aria-selected="true"] {
+  color: var(--primary);
+  font-weight: 650;
+}
+.dd-opt[aria-selected="true"]::after {
+  content: "\2713";
+  font-weight: 700;
+}
+@media (max-width: 900px) {
+  .dd-menu {
+    right: 0;
+    left: auto;
+  }
+}
+
+/* Above the sidebar breakpoint the pill row is a second copy of the same navigation,
+   pointing at the same sections, permanently on screen next to the first. Hiding it also
+   gives the meter back the offset it was reserving for a bar that is not there: zeroing
+   --nav-h moves the meter's sticky top AND every anchor's scroll-margin together, rather
+   than leaving three numbers to drift apart. */
+@media (min-width: 1400px) {
+  :root {
+    --nav-h: 0px;
+  }
+  .navwrap {
+    display: none;
+  }
+}

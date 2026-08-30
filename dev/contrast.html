@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Token contrast audit</title>
+
+    <!--
+      The real stylesheets are loaded so that :root carries the live tokens.
+      Missing files 404 harmlessly until the stage that adds them.
+
+      IMPORTANT: this page therefore inherits the site's rules for table/th/td/code
+      (including the <900px "turn tables into cards" block). So the audit UI below is
+      built entirely from <div>/<span> with its own class names and never uses a
+      semantic element the site styles. Do not "improve" it back into a <table>.
+    -->
+    <link rel="stylesheet" href="../styles/tokens.css" />
+    <link rel="stylesheet" href="../styles/base.css" />
+    <link rel="stylesheet" href="../styles/layout.css" />
+    <link rel="stylesheet" href="../styles/components.css" />
+    <link rel="stylesheet" href="../styles/overrides.css" />
+
+    <style>
+      /* Deliberately token-free: a broken token set must never make the audit unreadable. */
+      html,
+      body.ca {
+        background: #fff !important;
+      }
+      body.ca {
+        margin: 0 !important;
+        padding: 24px !important;
+        color: #111 !important;
+        font: 14px/1.5 ui-sans-serif, system-ui, sans-serif !important;
+        letter-spacing: normal !important;
+      }
+      .ca-h1 {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0 0 4px;
+      }
+      .ca-sub {
+        color: #666;
+        margin: 0 0 18px;
+        max-width: 900px;
+      }
+      .ca-h2 {
+        font-size: 15px;
+        font-weight: 700;
+        margin: 28px 0 8px;
+      }
+      .ca-note {
+        max-width: 1100px;
+        color: #555;
+        font-size: 13px;
+        background: #fffbe9;
+        border-left: 3px solid #e3b341;
+        padding: 8px 12px;
+        margin: 0 0 20px;
+      }
+      .ca-sum {
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: #f4f4f4;
+        max-width: 1100px;
+        margin: 0 0 18px;
+        font-size: 13px;
+      }
+      .ca-tbl {
+        max-width: 1100px;
+        border-top: 1px solid #e4e4e4;
+      }
+      .ca-row {
+        display: grid;
+        grid-template-columns: minmax(150px, 1.4fr) minmax(150px, 1.4fr) 44px 44px 130px 74px 52px;
+        gap: 10px;
+        align-items: center;
+        padding: 5px 10px;
+        border-bottom: 1px solid #e4e4e4;
+        font-size: 13px;
+      }
+      .ca-row.head {
+        background: #f4f4f4;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+      .ca-tok {
+        font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+        overflow-wrap: anywhere;
+      }
+      .ca-sw {
+        display: block;
+        height: 18px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: 3px;
+      }
+      .ca-demo {
+        display: block;
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-weight: 600;
+        font-size: 12px;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .ca-r {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        text-align: right;
+      }
+      .pass {
+        color: #0a7d32;
+      }
+      .fail {
+        color: #b3261e;
+      }
+      .warnv {
+        color: #8a5a00;
+      }
+      .ca-tag {
+        display: inline-block;
+        padding: 1px 7px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .ca-tag.pass {
+        background: #d8f3e0;
+      }
+      .ca-tag.fail {
+        background: #fadbd9;
+      }
+      .ca-tag.warnv {
+        background: #fceccd;
+      }
+      .muted {
+        color: #777;
+        font-weight: 400;
+      }
+      @media (max-width: 800px) {
+        .ca-row {
+          grid-template-columns: 1fr 1fr 60px 74px;
+        }
+        .ca-row > .ca-sw,
+        .ca-row > .ca-demo {
+          display: none;
+        }
+        .ca-row > .ca-demo.keep {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body class="ca">
+    <div class="ca-h1">Token contrast audit</div>
+    <p class="ca-sub">
+      Every colour token discovered in the loaded stylesheets, paired and scored against WCAG 2.1. No dependencies
+      &ndash; open this file directly from disk.
+    </p>
+
+    <p class="ca-note">
+      <b>Serve this folder, do not open the file directly.</b> Chrome treats <code>file://</code> stylesheets as opaque
+      and blocks <code>cssRules</code>, so token discovery finds nothing and the audit comes back empty. Any static
+      server works. For a headless check that needs no server, run <code>node dev/contrast-check.js</code>.
+    </p>
+
+    <p class="ca-note">
+      <b>Increased-contrast mode is not scriptable.</b> To audit it, turn the OS setting on (Windows: Settings &rarr;
+      Accessibility &rarr; Contrast themes; macOS: System Settings &rarr; Accessibility &rarr; Display &rarr; Increase
+      contrast) and reload. The banner below reports whether <code>prefers-contrast: more</code> is currently active.
+    </p>
+
+    <div id="out"></div>
+
+    <script>
+      (function () {
+        /* ---------- colour maths ---------- */
+
+        function parse(str) {
+          var m = String(str).match(/rgba?\(([^)]+)\)/);
+          if (!m) return null;
+          var p = m[1]
+            .split(/[,\s/]+/)
+            .filter(Boolean)
+            .map(parseFloat);
+          if (p.length < 3 || p.slice(0, 3).some(isNaN)) return null;
+          return { r: p[0], g: p[1], b: p[2], a: p.length > 3 && !isNaN(p[3]) ? p[3] : 1 };
+        }
+
+        // Flatten a translucent colour onto an opaque backdrop.
+        function over(fg, bg) {
+          if (fg.a >= 1) return fg;
+          return {
+            r: fg.r * fg.a + bg.r * (1 - fg.a),
+            g: fg.g * fg.a + bg.g * (1 - fg.a),
+            b: fg.b * fg.a + bg.b * (1 - fg.a),
+            a: 1,
+          };
+        }
+
+        function lum(c) {
+          var ch = [c.r, c.g, c.b].map(function (v) {
+            v /= 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+          });
+          return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+        }
+
+        function ratio(fg, bg) {
+          var a = lum(fg),
+            b = lum(bg);
+          if (a < b) {
+            var t = a;
+            a = b;
+            b = t;
+          }
+          return (a + 0.05) / (b + 0.05);
+        }
+
+        function css(c) {
+          return 'rgb(' + Math.round(c.r) + ',' + Math.round(c.g) + ',' + Math.round(c.b) + ')';
+        }
+
+        /* ---------- token discovery ---------- */
+
+        // Walk every rule in every readable stylesheet and collect --custom-property names.
+        function discover() {
+          var names = {};
+          function walk(rules) {
+            for (var i = 0; i < rules.length; i++) {
+              var r = rules[i];
+              if (r.style) {
+                for (var j = 0; j < r.style.length; j++) {
+                  var p = r.style[j];
+                  if (p.indexOf('--') === 0) names[p] = 1;
+                }
+              }
+              if (r.cssRules) walk(r.cssRules);
+            }
+          }
+          for (var s = 0; s < document.styleSheets.length; s++) {
+            try {
+              walk(document.styleSheets[s].cssRules);
+            } catch (e) {
+              /* unreadable stylesheet */
+            }
+          }
+          return Object.keys(names).sort();
+        }
+
+        // Resolve a token to a computed colour by letting the engine do the work.
+        // This transparently handles var() chains, light-dark(), color-mix() and keywords.
+        var probe = document.createElement('div');
+        probe.style.display = 'none';
+        document.body.appendChild(probe);
+
+        var SENTINEL = 'rgb(1, 2, 3)';
+        function resolve(name) {
+          probe.style.color = 'rgb(1,2,3)';
+          probe.style.color = 'var(' + name + ')';
+          var got = getComputedStyle(probe).color;
+          if (got === SENTINEL) return null; // not a valid colour
+          return parse(got);
+        }
+
+        /* ---------- pairing rules ---------- */
+
+        // Candidate page backdrops that a translucent colour is flattened onto before scoring.
+        var BACKDROPS = ['--page', '--surface-container-lowest', '--surface-container'];
+
+        function firstOpaque(vals) {
+          for (var i = 0; i < BACKDROPS.length; i++) {
+            var c = vals[BACKDROPS[i]];
+            if (c && c.a >= 1) return c;
+          }
+          return { r: 255, g: 255, b: 255, a: 1 };
+        }
+
+        // Text pairs needing 4.5:1. Auto-derived --on-X / --X, plus these explicit ones.
+        var SURFACES = ['--page', '--surface-container-lowest', '--surface-container'];
+        var EXTRA_TEXT_PAIRS = [];
+        ['--label', '--label-2', '--label-3', '--primary', '--success', '--caution', '--error'].forEach(function (fg) {
+          SURFACES.forEach(function (bg) {
+            EXTRA_TEXT_PAIRS.push([fg, bg]);
+          });
+        });
+
+        // Non-text pairs needing only 3:1 (borders, separators, meter fills, focus rings).
+        var UI_PAIRS = [
+          ['--outline', '--page'],
+          ['--outline', '--surface-container-lowest'],
+          ['--focus-ring', '--page'],
+          ['--thumb', '--page'],
+          ['--success', '--fill-2'],
+          ['--error', '--fill-2'],
+          ['--surface-container', '--page'],
+          ['--outline-variant', '--surface-container-lowest'],
+          ['--separator', '--surface-container-lowest'],
+        ];
+
+        function collectPairs(names, vals) {
+          var seen = {},
+            text = [],
+            ui = [];
+          function push(list, tag, fg, bg) {
+            if (!vals[fg] || !vals[bg] || fg === bg) return;
+            var k = tag + fg + '|' + bg;
+            if (seen[k]) return;
+            seen[k] = 1;
+            list.push([fg, bg]);
+          }
+          names.forEach(function (n) {
+            if (n.indexOf('--on-') !== 0) return;
+            push(text, 'T', n, '--' + n.slice(5));
+          });
+          EXTRA_TEXT_PAIRS.forEach(function (p) {
+            push(text, 'T', p[0], p[1]);
+          });
+          UI_PAIRS.forEach(function (p) {
+            push(ui, 'U', p[0], p[1]);
+          });
+          return { text: text, ui: ui };
+        }
+
+        /* ---------- scoring and rendering ---------- */
+
+        function esc(s) {
+          return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        }
+
+        function score(fgName, bgName, vals, base, min) {
+          var bg = over(vals[bgName], base);
+          var fg = over(vals[fgName], bg);
+          var r = ratio(fg, bg);
+          var ok = r >= min;
+          // 7:1 is the HIG's stricter advice for small text; surface the gap rather than hide it.
+          var cls = !ok ? 'fail' : min === 3 || r >= 7 ? 'pass' : 'warnv';
+          var label = !ok ? 'FAIL' : min === 3 ? 'AA' : r >= 7 ? 'AAA' : 'AA';
+          return { r: r, ok: ok, fg: fg, bg: bg, cls: cls, label: label, fgName: fgName, bgName: bgName };
+        }
+
+        function row(s) {
+          return (
+            '<div class="ca-row">' +
+            '<span class="ca-tok">' +
+            esc(s.fgName) +
+            '</span>' +
+            '<span class="ca-tok">' +
+            esc(s.bgName) +
+            '</span>' +
+            '<span class="ca-sw" style="background:' +
+            css(s.fg) +
+            '"></span>' +
+            '<span class="ca-sw" style="background:' +
+            css(s.bg) +
+            '"></span>' +
+            '<span class="ca-demo keep" style="background:' +
+            css(s.bg) +
+            ';color:' +
+            css(s.fg) +
+            '">Ag sample</span>' +
+            '<span class="ca-r ' +
+            s.cls +
+            '">' +
+            s.r.toFixed(2) +
+            '</span>' +
+            '<span><span class="ca-tag ' +
+            s.cls +
+            '">' +
+            s.label +
+            '</span></span>' +
+            '</div>'
+          );
+        }
+
+        function table(pairs, vals, base, min, caption) {
+          if (!pairs.length) return '<div class="ca-h2">' + caption + '</div><p class="muted">No matching tokens.</p>';
+          var rows = pairs
+            .map(function (p) {
+              return score(p[0], p[1], vals, base, min);
+            })
+            .sort(function (a, b) {
+              return a.r - b.r;
+            });
+          var fails = rows.filter(function (x) {
+            return !x.ok;
+          }).length;
+          return (
+            '<div class="ca-h2">' +
+            caption +
+            ' <span class="muted">&mdash; ' +
+            rows.length +
+            ' pairs, minimum ' +
+            min +
+            ':1, ' +
+            (fails ? '<b class="fail">' + fails + ' failing</b>' : '<b class="pass">all passing</b>') +
+            '</span></div><div class="ca-tbl"><div class="ca-row head"><span>Foreground</span><span>Background</span><span>Fg</span><span>Bg</span><span class="ca-demo keep" style="background:none;color:inherit">Sample</span><span class="ca-r">Ratio</span><span></span></div>' +
+            rows.map(row).join('') +
+            '</div>'
+          );
+        }
+
+        function auditTheme(theme, names) {
+          document.documentElement.setAttribute('data-theme', theme);
+          void document.body.offsetHeight; // force a style recalc before reading
+
+          var vals = {};
+          names.forEach(function (n) {
+            var c = resolve(n);
+            if (c) vals[n] = c;
+          });
+
+          var base = firstOpaque(vals);
+          var pairs = collectPairs(names, vals);
+          var fails = 0;
+          pairs.text.forEach(function (p) {
+            if (!score(p[0], p[1], vals, base, 4.5).ok) fails++;
+          });
+          pairs.ui.forEach(function (p) {
+            if (!score(p[0], p[1], vals, base, 3).ok) fails++;
+          });
+
+          return (
+            '<div class="ca-sum"><b>' +
+            theme.toUpperCase() +
+            '</b> &mdash; ' +
+            Object.keys(vals).length +
+            ' colour tokens of ' +
+            names.length +
+            ' total &middot; page base ' +
+            css(base) +
+            ' &middot; ' +
+            (fails ? '<b class="fail">' + fails + ' failing pairs</b>' : '<b class="pass">no failures</b>') +
+            '</div>' +
+            table(pairs.text, vals, base, 4.5, theme + ' &middot; text pairs') +
+            table(pairs.ui, vals, base, 3, theme + ' &middot; non-text / UI pairs')
+          );
+        }
+
+        var names = discover();
+        var out =
+          '<div class="ca-sum">Discovered <b>' +
+          names.length +
+          '</b> custom properties. <code>prefers-contrast: more</code> is currently <b>' +
+          (window.matchMedia('(prefers-contrast: more)').matches ? 'ON' : 'off') +
+          '</b>. Amber = clears AA but sits under the HIG&rsquo;s stricter 7:1 advice for small text.</div>';
+
+        out += auditTheme('light', names);
+        out += auditTheme('dark', names);
+
+        document.documentElement.removeAttribute('data-theme');
+        document.getElementById('out').innerHTML = out;
+      })();
+    </script>
+  </body>
+</html>

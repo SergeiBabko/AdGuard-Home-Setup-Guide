@@ -1,0 +1,982 @@
+/* ============================================================================
+   components.css
+   Every discrete component: controls, cards, tables, meter, dropdown.
+   ---------------------------------------------------------------------------- */
+
+/* ---------- state layers ----------
+   Material 3 paints interaction state as a translucent overlay in the element's own
+   content colour, instead of swapping its background. One mechanism for every control,
+   so hover feels identical everywhere and nothing has to hand-pick a hover colour.
+
+   Every part of the recipe earns its place:
+     position: relative     the overlay is positioned against its host
+     isolation: isolate     forces a stacking context. Without it, a host that is not
+                            already one lets the z-index:-1 overlay slip behind an
+                            ANCESTOR's background and vanish
+     z-index: -1            keeps the overlay above the host's own background but below
+                            its text. At the default z-index it covers the text
+     pointer-events: none   hosts include click-to-copy code blocks and real links
+     border-radius: inherit pills stay pill-shaped
+
+   Table rows are deliberately absent from this list - see the table block below. */
+.seg button,
+.nav a,
+.srcs a,
+.c-lk a,
+.dd-btn,
+.dd-opt,
+code {
+  position: relative;
+  isolation: isolate;
+}
+.seg button::before,
+.nav a::before,
+.srcs a::before,
+.c-lk a::before,
+.dd-btn::before,
+.dd-opt::before,
+code::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-short) var(--ease-standard);
+}
+.seg button:hover::before,
+.nav a:hover::before,
+.srcs a:hover::before,
+.c-lk a:hover::before,
+.dd-btn:hover::before,
+.dd-opt:hover::before,
+code:hover::before {
+  opacity: var(--state-opacity-hover);
+}
+.seg button:active::before,
+.nav a:active::before,
+.srcs a:active::before,
+.c-lk a:active::before,
+.dd-btn:active::before,
+.dd-opt:active::before,
+code:active::before {
+  opacity: var(--state-opacity-press);
+}
+
+/* segmented controls */
+.seg {
+  display: inline-flex;
+  /* Pinned rather than emergent: --toc-top is derived from this, so a change in button
+     padding must not silently move the sidebar out of line with the heading. */
+  min-height: var(--seg-h);
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-container);
+  border-radius: var(--shape-full);
+  box-shadow: var(--elev-1);
+}
+.seg button {
+  font: inherit;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--label-2);
+  background: none;
+  border: 0;
+  padding: var(--space-8) var(--space-16);
+  /* 38px + the 3px padding on .seg clears Apple's 44px hit area for the row. */
+  min-height: 38px;
+  border-radius: var(--shape-full);
+  cursor: pointer;
+  transition: color var(--dur-medium) var(--ease-standard);
+}
+.seg button[aria-pressed="true"] {
+  background: var(--surface-container-lowest);
+  color: var(--label);
+  box-shadow: var(--elev-1);
+}
+.navwrap {
+  position: sticky;
+  top: var(--sticky-top);
+  z-index: var(--z-sticky-nav);
+  padding: 0 clamp(var(--space-20), 3.4vw, var(--space-56));
+  margin: var(--space-24) 0 var(--space-6);
+}
+.nav-in {
+  max-width: 1528px;
+  margin: 0 auto;
+}
+/* A single scrollable row rather than a wrapping one. Two reasons: it is the standard
+   scrollable-tabs pattern on both platforms and behaves better on a phone than a pill
+   block that silently grows to two lines, and it makes the bar's height a constant that
+   CSS can express - which is what lets --nav-h be a token instead of a measured value. */
+.nav {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding: var(--space-4);
+  background: var(--surface-container);
+  border-radius: var(--shape-full);
+  width: max-content;
+  max-width: 100%;
+  box-shadow: var(--elev-1);
+  transition: box-shadow var(--dur-medium) var(--ease-standard);
+}
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- materials ----------
+   The two sticky bars are translucent so page content shifts behind them as you scroll,
+   which is what tells you they are floating rather than part of the document.
+
+   Rules that keep this working, all of them learned the hard way:
+     - both the prefixed and unprefixed property: iOS Safari shipped -webkit- first
+     - NO ancestor may carry filter, opacity < 1 or mask. Any of them resets the backdrop
+       root and the blur silently samples nothing, leaving a transparent bar
+     - a blurred element becomes a stacking context, so a descendant's z-index is capped
+       inside the bar's own layer. That is why .dd-menu's z-index cannot lift it above
+       the nav from inside the meter - see the z-index scale in tokens.css
+   The opaque fallbacks live in overrides.css.
+
+   A bar is only translucent while it is actually pinned. At rest it sits in the document
+   like any other card and reads as a solid surface; the moment content starts passing
+   underneath, it becomes a material. Translucency at rest just made the meter look like
+   a grey smear against the page, because its tint and the page are the same colour. */
+/* overflow: hidden belongs ONLY on the nav. It was on the meter too, to stop WebKit
+   letting a backdrop-filter bleed past a rounded corner - but the meter contains the two
+   dropdowns, and their menus are absolutely positioned children, so the guard clipped
+   them: 251 of a 263px menu simply disappeared at the bar's bottom edge. The corner bug
+   was fixed in WebKit long before Safari 17.5, which is already the floor this page sets
+   by using light-dark(), so the guard was protecting against browsers that cannot render
+   the page at all. */
+.nav,
+.budget-in {
+  transition:
+    background var(--dur-medium) var(--ease-standard),
+    box-shadow var(--dur-medium) var(--ease-standard);
+}
+.nav {
+  overflow: hidden;
+}
+.navwrap.stuck .nav,
+.budget.stuck .budget-in {
+  background: var(--material-tint);
+  -webkit-backdrop-filter: var(--material-blur);
+  backdrop-filter: var(--material-blur);
+}
+/* the nav still needs to scroll horizontally, which overflow: hidden above would kill */
+.nav {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.navwrap.stuck .nav {
+  box-shadow: var(--elev-2);
+}
+.nav a {
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--label-2);
+  padding: var(--space-8) var(--space-16);
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  min-height: var(--nav-item-h);
+  border-radius: var(--shape-full);
+  transition: color var(--dur-medium) var(--ease-standard);
+}
+.nav a.act {
+  background: var(--surface-container-lowest);
+  color: var(--label);
+  box-shadow: var(--elev-1);
+  opacity: 1;
+}
+
+/* rule cards */
+.rules {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-12);
+  margin: var(--space-32) 0 0;
+}
+.rule {
+  background: var(--surface-container-lowest);
+  border-radius: var(--shape-lg);
+  padding: var(--space-24);
+  box-shadow: var(--elev-1);
+  transition: box-shadow var(--dur-medium) var(--ease-standard);
+}
+.rule:hover {
+  box-shadow: var(--elev-2);
+}
+.rule i {
+  display: block;
+  font-style: normal;
+  font-size: var(--text-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+  margin-bottom: var(--space-12);
+}
+.rule h4 {
+  font-size: var(--text-body);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  margin: 0 0 var(--space-8);
+}
+.rule p {
+  margin: 0;
+  font-size: var(--text-subhead);
+  color: var(--label-2);
+  line-height: 1.42;
+}
+
+/* ---------- sections ---------- */
+.sec {
+  margin-top: var(--space-80);
+  /* Derived from the sticky stack rather than guessed. The old value was a flat 96px
+     that matched nothing in particular. */
+  scroll-margin-top: calc(var(--sticky-top) + var(--nav-h) + var(--space-24));
+}
+/* Inside the blocklists the meter is pinned under the nav too, so anchors there have a
+   taller stack to clear. */
+.lists-region [id] {
+  scroll-margin-top: calc(var(--meter-top) + var(--meter-h) + var(--space-16));
+}
+.sec-h {
+  margin-bottom: var(--space-20);
+}
+.sec-top {
+  display: flex;
+  gap: var(--space-20);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
+}
+.sec-h h2 {
+  font-size: clamp(1.625rem, 2.8vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  margin: 0 0 var(--space-12);
+  line-height: 1.15;
+}
+.sec-h p {
+  margin: 0;
+  color: var(--label-2);
+  font-size: var(--text-callout);
+}
+.sec-h p + p {
+  margin-top: var(--space-8);
+}
+.srcs {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  align-items: center;
+}
+.srcs a {
+  background: var(--primary-container);
+  /* on-primary-container, not primary: the container role has a matching on- role and
+     that is the pair with a guaranteed ratio. */
+  color: var(--on-primary-container);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--shape-full);
+  box-shadow: var(--elev-1);
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  /* No `filter` here. Besides darkening an already-dark chip in dark mode - hover
+     reducing affordance rather than increasing it - a filter creates a containing
+     block that would break the backdrop-filter on any ancestor. */
+  transition: box-shadow var(--dur-medium) var(--ease-standard);
+}
+.srcs a:hover {
+  box-shadow: var(--elev-2);
+}
+
+.grp {
+  margin-top: var(--space-32);
+}
+.grp-h {
+  margin: 0 0 var(--space-16);
+  padding: 0 var(--space-8);
+}
+.grp-h h3 {
+  font-size: var(--text-title-2);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--label);
+}
+.grp-h {
+  padding-top: var(--space-2);
+}
+.grp-h p {
+  margin: var(--space-6) 0 0;
+  color: var(--label-2);
+  font-size: var(--text-subhead);
+}
+
+/* ---------- tables ---------- */
+.wrap {
+  overflow-x: auto;
+  background: var(--surface-container-lowest);
+  border-radius: var(--shape-lg);
+  box-shadow: var(--elev-1);
+  -webkit-overflow-scrolling: touch;
+}
+/* a second table following straight on from the one above it */
+.wrap-stacked {
+  margin-top: var(--space-16);
+}
+
+/* Mobile sort controls. Hidden here; the overrides file turns them on below 900px,
+   where the header row that normally carries sorting is not rendered. */
+.sortbar {
+  display: none;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-12);
+  padding: 0 var(--space-8);
+}
+.sortbar-l {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--label-3);
+}
+.sortbar-dir {
+  position: relative;
+  isolation: isolate;
+  font: inherit;
+  font-size: var(--text-callout);
+  line-height: 1;
+  color: var(--label);
+  background: var(--surface-container);
+  border: 0;
+  border-radius: var(--shape-sm);
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  cursor: pointer;
+}
+.sortbar-dir::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-short) var(--ease-standard);
+}
+.sortbar-dir:hover::before {
+  opacity: var(--state-opacity-hover);
+}
+.sortbar-dir:active::before {
+  opacity: var(--state-opacity-press);
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 1080px;
+}
+th {
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--label-3);
+  text-align: left;
+  padding: 0 var(--space-16);
+  height: 48px;
+  vertical-align: middle;
+  white-space: nowrap;
+  background: transparent;
+  /* The header row previously ran straight into the first data row. A hairline is the
+     lightest thing that separates them; it is an alpha tier so it reads correctly over
+     the card, and it thickens under prefers-contrast. */
+  border-bottom: 1px solid var(--separator);
+}
+td {
+  padding: var(--space-16) var(--space-16);
+  vertical-align: top;
+  font-size: var(--text-subhead);
+  line-height: 1.42;
+}
+tr:last-child td {
+  border-bottom: 0;
+}
+/* Table rows carry state through stacked background-images rather than the ::before
+   overlay used everywhere else, and must keep doing so: a `display: table-row` box
+   handles `position: relative` inconsistently across engines, does not clip overflow,
+   and has no border-radius for an overlay to inherit.
+
+   The invariant that makes this work, and that must survive any future edit here:
+
+       background-COLOR carries identity   (selected, over-budget)
+       background-IMAGE carries state      (zebra, hover)
+
+   They occupy different properties, so a selected row can still show zebra striping and
+   still respond to hover. Moving `.on` to a background-image would silently clobber the
+   zebra layer underneath it. */
+tbody tr {
+  transition: background-color var(--dur-medium) var(--ease-standard);
+}
+tbody tr[data-rules] {
+  cursor: pointer;
+}
+/* The whole row is the hit area for the toggle, so it owes a press state like any other
+   control. Same background-image channel as hover, per the invariant above. */
+tbody tr[data-rules]:active {
+  background-image: linear-gradient(var(--state-press), var(--state-press));
+}
+/* The quiet tone, not the chip tone: see --success-surface in tokens.css. Zebra still
+   applies on top, through background-image, so a selected row tracks across the table
+   exactly like an unselected one. */
+tbody tr.on {
+  background-color: var(--success-surface);
+}
+tbody tr:nth-child(even) {
+  background-image: linear-gradient(var(--fill-4), var(--fill-4));
+}
+tbody tr:hover {
+  background-image: linear-gradient(var(--state-hover), var(--state-hover));
+}
+tbody tr:nth-child(even):hover {
+  background-image: linear-gradient(var(--state-hover), var(--state-hover)), linear-gradient(var(--fill-4), var(--fill-4));
+}
+.c-st {
+  width: 64px;
+}
+.c-nm {
+  width: 210px;
+}
+.c-num {
+  width: 96px;
+  text-align: right;
+}
+th.c-num {
+  text-align: right;
+}
+.c-lk {
+  width: 112px;
+}
+.c-tx {
+  min-width: 180px;
+}
+.c-sm {
+  width: 126px;
+}
+td.c-sm {
+  color: var(--label-2);
+}
+.c-ad {
+  width: 460px;
+}
+.c-vd {
+  width: 120px;
+}
+.c-opt {
+  width: 260px;
+}
+.nm {
+  font-weight: 650;
+  display: block;
+  letter-spacing: -0.012em;
+}
+.big {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.big.em {
+  font-weight: 600;
+  color: var(--success);
+}
+.big i {
+  font-style: normal;
+  color: var(--label-3);
+  margin-left: var(--space-4);
+}
+.sub {
+  display: block;
+  color: var(--label-3);
+  margin-top: var(--space-4);
+}
+.nil {
+  color: var(--label-3);
+}
+.c-lk a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-8));
+  border-radius: var(--shape-sm);
+  color: var(--primary);
+  width: max-content;
+  /* 44px is Apple's minimum hit area; the visible chip stays the size it was. */
+  min-height: 44px;
+  box-sizing: border-box;
+  transition: color var(--dur-medium) var(--ease-standard);
+}
+.c-lk a + a {
+  margin-top: var(--space-4);
+}
+.c-lk svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+code {
+  font-family: var(--font-mono);
+  display: block;
+  padding: var(--space-8) var(--space-32) var(--space-8) var(--space-12);
+  /* A translucent fill, not a surface tone. These sit inside table cells, so the colour
+     behind them changes with every row state - zebra, hover, selected, over-budget. An
+     opaque grey holds still while the row moves and the card stops separating from it;
+     an alpha tier keeps the same step above whatever it happens to be sitting on. */
+  background: var(--fill-3);
+  border-radius: var(--shape-sm);
+  margin-bottom: var(--space-6);
+  word-break: break-all;
+  color: var(--label);
+  cursor: pointer;
+  transition:
+    background var(--dur-medium) var(--ease-standard),
+    color var(--dur-medium) var(--ease-standard);
+}
+code::after {
+  content: "\29C9";
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  transform: translateY(-50%);
+  font-family: var(--font-sans);
+  font-size: var(--text-footnote);
+  color: var(--label-3);
+  opacity: 0;
+  transition: opacity var(--dur-medium) var(--ease-standard);
+}
+code:hover::after,
+code:focus-visible::after {
+  opacity: 1;
+}
+code.copied {
+  background: var(--success-container);
+  color: var(--on-success-container);
+}
+/* The state layer is tinted with currentColor, which turns green while "Copied" is
+   showing. Suppress it so success feedback is not washed by a hover tint. */
+code.copied::before {
+  opacity: 0 !important;
+}
+code.copied::after {
+  content: "Copied";
+  opacity: 1;
+  color: var(--on-success-container);
+  font-weight: 600;
+  font-size: var(--text-caption);
+}
+code:last-child {
+  margin-bottom: 0;
+}
+/* a command mentioned mid-sentence rather than offered as a block to copy */
+code.inline {
+  display: inline;
+  padding: 1px var(--space-6);
+}
+
+th[data-k] {
+  cursor: pointer;
+  user-select: none;
+}
+th[data-k]:hover {
+  color: var(--label);
+}
+th[data-k]::after {
+  content: " \2195";
+  opacity: 0.4;
+  font-size: var(--text-caption);
+}
+th[data-k].act {
+  color: var(--primary);
+}
+th[data-k].act::after {
+  content: " \2193";
+  opacity: 1;
+}
+th[data-k].act.up::after {
+  content: " \2191";
+}
+
+/* pills */
+.pill {
+  display: inline-block;
+  font-weight: 600;
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--shape-full);
+  white-space: normal;
+  line-height: 1.3;
+}
+.p-best {
+  background: var(--success-container);
+  color: var(--on-success-container);
+}
+.p-good {
+  background: var(--surface-container);
+  color: var(--label-2);
+}
+.p-avoid {
+  background: var(--error-container);
+  color: var(--on-error-container);
+}
+.c-vd .pill {
+  white-space: nowrap;
+}
+.warn-i {
+  color: var(--caution);
+  display: inline-block;
+  margin-top: var(--space-6);
+}
+.orow {
+  padding: 0 0 var(--space-16);
+  display: block;
+}
+.orow + .orow {
+  padding-top: var(--space-16);
+}
+tr[data-pair] td > .orow:last-child {
+  padding-bottom: 0;
+}
+.orow p {
+  margin: 0;
+}
+.orow p + p {
+  margin-top: var(--space-6);
+}
+.c-opt .orow {
+  font-weight: 500;
+  color: var(--label-2);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+.c-opt .orow.rec {
+  color: var(--success);
+  font-weight: 650;
+}
+/* "Who should enable it" - the column a reader scans to make the actual decision.
+   The class was already on all 58 cells with no rule attached to it. */
+.c-sg {
+  color: var(--label);
+  font-weight: 500;
+}
+.c-tx .orow p:first-child {
+  color: var(--label);
+}
+
+/* switch
+   `pointer-events: none` used to be here so that clicks fell through to the row
+   handler. It also meant the label never activated its own checkbox, and it did not
+   stop the click the browser dispatches on keyboard activation - which bubbled to the
+   row handler and undid the toggle. The row handler now ignores label/input targets
+   instead, so both pointer and keyboard activation work. */
+.sw {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  cursor: pointer;
+  user-select: none;
+}
+.sw input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+/* The input itself is 0x0, so the ring has to be drawn on the visible track. */
+.sw input:focus-visible {
+  outline: none;
+}
+.sw input:focus-visible ~ .dot {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.dot {
+  width: 34px;
+  height: 20px;
+  flex: none;
+  border-radius: var(--shape-full);
+  /* A translucent fill rather than a surface tone, so the track reads correctly on a
+     card, on a zebra stripe and on a selected row alike. */
+  background: var(--fill-2);
+  position: relative;
+  transition: background var(--dur-medium) var(--ease-standard);
+}
+.dot::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--switch-knob);
+  box-shadow: var(--elev-1);
+  transition: transform var(--dur-medium) var(--ease-standard);
+}
+.sw input:checked ~ .dot {
+  background: var(--success);
+}
+.sw input:checked ~ .dot::after {
+  transform: translateX(14px);
+}
+
+/* preset cards */
+.pres {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-12);
+}
+.pre {
+  background: var(--surface-container-lowest);
+  border-radius: var(--shape-lg);
+  padding: var(--space-24);
+  box-shadow: var(--elev-1);
+  transition: box-shadow var(--dur-medium) var(--ease-standard);
+}
+.pre.best {
+  box-shadow: var(--elev-2);
+}
+@media (min-width: 1100px) {
+  .pres {
+    margin-top: var(--space-24);
+  }
+  .pre.best {
+    margin-block: calc(-1 * var(--space-8));
+    padding-block: var(--space-32);
+  }
+}
+.pre:hover {
+  box-shadow: var(--elev-2);
+}
+.pre-h h4 {
+  font-size: var(--text-title-3);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  margin: 0 0 var(--space-6);
+}
+.pre-h p {
+  margin: 0 0 var(--space-20);
+  font-size: var(--text-footnote);
+  color: var(--label-2);
+  line-height: 1.42;
+}
+.pre-f {
+  margin-bottom: var(--space-16);
+}
+.pre-f > span {
+  display: block;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--label-3);
+  margin-bottom: var(--space-8);
+}
+
+/* The region that bounds the sticky meter. It must not establish a scroll container or
+   clip: any overflow other than visible turns position: sticky into a no-op, silently. */
+.lists-region {
+  overflow: visible;
+}
+
+/* A marker script.js inserts above each sticky bar to detect when the bar is pinned.
+   Absolutely positioned with no offsets, so it sits at its static position and takes up
+   no space at all - a 1px in-flow element would nudge the surrounding margins. */
+.stuck-sentinel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+/* sticky meter */
+.budget {
+  position: sticky;
+  top: var(--meter-top);
+  z-index: var(--z-sticky-meter);
+  padding: 0 clamp(var(--space-20), 3.4vw, var(--space-56));
+  margin: var(--space-16) 0 var(--space-6);
+}
+.budget.stuck .budget-in {
+  box-shadow: var(--elev-2);
+}
+.budget-in {
+  max-width: 1528px;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-20);
+  display: flex;
+  gap: var(--space-20);
+  align-items: center;
+  flex-wrap: wrap;
+  /* Solid while resting. The material above replaces this only once .stuck is set. */
+  background: var(--surface-container-lowest);
+  border-radius: var(--shape-lg);
+  box-shadow: var(--elev-1);
+  transition: box-shadow var(--dur-medium) var(--ease-standard);
+}
+.meter {
+  flex: 1 1 300px;
+  min-width: 220px;
+}
+.bar {
+  height: 18px;
+  background: var(--fill-2);
+  border-radius: var(--shape-full);
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px var(--shadow-inset);
+}
+.bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--success);
+  border-radius: var(--shape-full);
+  transition:
+    width 0.3s var(--ease-standard),
+    background var(--dur-medium);
+}
+.bar.over .bar-fill {
+  background: var(--error);
+}
+.bar.unl {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--fill-2),
+    var(--fill-2) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+.bar.unl .bar-fill {
+  width: 0 !important;
+}
+.stat {
+  white-space: nowrap;
+}
+.stat b {
+  display: block;
+  font-size: var(--text-title-3);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.stat s {
+  display: block;
+  text-decoration: none;
+  font-size: var(--text-caption);
+  color: var(--label-2);
+  margin-top: var(--space-2);
+  white-space: nowrap;
+}
+.stat b i {
+  font-style: normal;
+  font-size: var(--text-footnote);
+  color: var(--label-2);
+}
+.ramsel {
+  font-size: var(--text-footnote);
+  color: var(--label-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  white-space: nowrap;
+}
+select {
+  font-family: var(--font-sans);
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--shape-sm);
+  background: var(--surface-container);
+  color: var(--label);
+  min-height: 40px;
+  border: 0;
+}
+.verdict {
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--shape-full);
+  background: var(--success-container);
+  color: var(--on-success-container);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.verdict.bad {
+  background: var(--error-container);
+  color: var(--on-error-container);
+}
+.devrow {
+  display: none;
+  margin: var(--space-20) 0 0;
+  align-items: center;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+  font-size: var(--text-footnote);
+  color: var(--label-2);
+}
+
+.note {
+  margin: var(--space-12) 0 0;
+  padding: 0 var(--space-8);
+  font-size: var(--text-footnote);
+  color: var(--label-2);
+}
+/* 64px of margin on top of the shell's own bottom padding left ~127px of empty band
+   between the last table and the first line of the footer. A rule does the separating
+   instead, so the space can be a normal section gap rather than a void. */
+footer {
+  margin-top: var(--space-24);
+  border-top: 1px solid var(--separator);
+  padding: var(--space-24) var(--space-8) 0;
+  font-size: var(--text-footnote);
+  color: var(--label-3);
+  line-height: 1.6;
+}
+
+/* over budget */
+body.over tbody tr.on {
+  background-color: var(--error-surface);
+}
+body.over tbody tr.on .dot {
+  background: var(--error);
+  border-color: var(--error);
+}
+body.over tbody tr.on .big {
+  color: var(--on-error-container);
+}
+body.over .big.em {
+  color: var(--error);
+}

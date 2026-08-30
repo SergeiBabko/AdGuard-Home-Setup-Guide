@@ -1,0 +1,371 @@
+/* ============================================================================
+   tokens.css
+   Design tokens. The only file allowed to hold raw colour literals.
+
+   Three layers, in order:
+     0  reference  - tonal ramps, the raw material. Never referenced by components.
+     1  semantic   - roles that say what a colour is *for*. What components use.
+     2  scales     - spacing, shape, elevation, motion, state, z-index.
+
+   The colour model is Material 3's tonal-role architecture carrying Apple's semantic
+   layering. The split between the two is functional, not cosmetic:
+
+     - Anything that must hit a contrast ratio is an OPAQUE role drawn from a ramp
+       (--label, --label-2, --label-3, --primary, --outline, --focus-ring).
+     - Anything that must composite over unknown pixels is an ALPHA tier
+       (--fill-*, --separator, --state-*). These sit over surfaces and over the blurred
+       materials on the sticky bars, where an opaque patch would look wrong.
+
+   That is why the three label tiers are opaque here rather than the translucent greys
+   iOS uses: on this page they sit on cards and zebra-striped table rows, and the
+   translucent treatment they replaced measured 3.77:1 against the page background.
+
+   Themes are expressed once, with light-dark(). See the note above the role layer.
+
+   Two rules that keep this honest:
+     - components never reference layer 0. If a rule wants --n-92, the answer is a
+       missing role, not a shortcut.
+     - every change is checked with `node dev/contrast-check.js`, which resolves these
+       tokens per theme and fails the build on any text pair under 4.5:1.
+   ---------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------- 0 reference */
+/* These ramps were derived in OKLCH by dev/make-ramps.js, which prints the same table
+   and self-tests its own colour conversions. Re-run it to retune a hue or add a tone.
+
+   Tone numbers are CIE L*, matching Material 3, so tone 40 is the same lightness in
+   every ramp. They are written as hex rather than oklch() so the shipped values are
+   exactly what dev/contrast-check.js verifies, with no gamut-mapping differences
+   between engines to reason about. */
+:root {
+  /* indigo   - accent. source #5457D6 = oklch(52.8% 0.191 276.7) */
+  --p-20: #252861;
+  --p-30: #373a8e;
+  --p-40: #4a4eba;
+  --p-80: #b8c2fe;
+  --p-90: #dbe1fe;
+  --p-100: #ffffff;
+
+  /* neutral  - page and card surfaces. same hue, chroma x0.06 */
+  --n-4: #0e0e0f;
+  --n-6: #131314;
+  --n-10: #1b1b1d;
+  --n-12: #1f1f21;
+  --n-17: #292a2d;
+  --n-20: #2f3033;
+  --n-22: #343438;
+  --n-24: #38393d;
+  --n-87: #d9dade;
+  --n-90: #e1e2e6;
+  --n-92: #e7e8ec;
+  --n-94: #edeef1;
+  --n-96: #f3f3f7;
+  --n-100: #ffffff;
+
+  /* variant  - secondary text, outlines. same hue, chroma x0.14 */
+  --nv-30: #444651;
+  --nv-40: #5b5d6c;
+  --nv-50: #737687;
+  --nv-60: #8c90a1;
+  --nv-70: #a7aaba;
+  --nv-80: #c3c6d3;
+
+  /* green    - "fits" / recommended. source #1E9E4A */
+  --ok-30: #025623;
+  --ok-40: #047230;
+  --ok-80: #8fdc9d;
+  --ok-90: #bcf3c5;
+
+  /* amber    - cautions. source #C07000 */
+  --warn-30: #673a02;
+  --warn-40: #884e01;
+  --warn-80: #f5b880;
+  --warn-90: #fedbbc;
+
+  /* red      - "does not fit" / avoid. source #D3352F */
+  --err-30: #821916;
+  --err-40: #aa2320;
+  --err-80: #feafa5;
+  --err-90: #fed8d3;
+}
+
+/* ------------------------------------------------------------- theme switching */
+/*
+  color-scheme drives light-dark(), so each token below is declared exactly once.
+  This is what removes the duplicated dark block the old file carried twice, and with
+  it the whole class of bug where one copy drifts from the other.
+
+  It also themes native scrollbars and form controls for free.
+*/
+:root {
+  color-scheme: light dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* ----------------------------------------------------------------- 1 semantic */
+/*
+  Tone assignments follow the Material 3 role table (light / dark):
+    primary 40/80, on-primary 100/20, primary-container 90/30, on-* 30/90
+    surface tiers walk the neutral ramp in opposite directions per scheme.
+
+  Surfaces follow Apple's *grouped* model rather than M3's ladder: the page is a step
+  darker than the cards in light mode, and a step darker than the cards in dark mode
+  too. Cards are lighter than the page in BOTH schemes, which is what this design
+  already did and what Apple's base-vs-elevated guidance calls for.
+*/
+:root {
+  /* accent */
+  --primary: light-dark(var(--p-40), var(--p-80));
+  --on-primary: light-dark(var(--p-100), var(--p-20));
+  --primary-container: light-dark(var(--p-90), var(--p-30));
+  --on-primary-container: light-dark(var(--p-30), var(--p-90));
+
+  /* status */
+  --success: light-dark(var(--ok-40), var(--ok-80));
+  --success-container: light-dark(var(--ok-90), var(--ok-30));
+  --on-success-container: light-dark(var(--ok-30), var(--ok-90));
+  /* Selected rows. A translucent tint, not a fill - which is the whole point: an opaque
+     tone has to be picked to look right against one background, and a row sits on the
+     card, the zebra stripe and the hover layer in turn. At 10% the surface still shows
+     through, so the tint stays a tint everywhere and never competes with the text.
+
+     Alpha also solves the brightness problem the opaque tones had. The container tones
+     are chip tones - correct on a 60px badge, a slab of paint across a full-width row -
+     and dark ran louder than light besides (1.85:1 against the row surface where light
+     was 1.25:1). These put all four at the same quiet step: 1.14 / 1.15 for green in
+     light / dark, 1.16 / 1.12 for red. Enough to read as selected at a glance, not
+     enough to shout. Channels are ramp steps ok-50 / ok-60 and err-50 / err-60. */
+  --success-surface: light-dark(rgb(3 143 62 / 0.1), rgb(54 170 88 / 0.1));
+  --caution: light-dark(var(--warn-40), var(--warn-80));
+  --caution-container: light-dark(var(--warn-90), var(--warn-30));
+  --on-caution-container: light-dark(var(--warn-30), var(--warn-90));
+  --error: light-dark(var(--err-40), var(--err-80));
+  --error-container: light-dark(var(--err-90), var(--err-30));
+  --on-error-container: light-dark(var(--err-30), var(--err-90));
+  --error-surface: light-dark(rgb(208 54 48 / 0.1), rgb(239 85 74 / 0.1));
+
+  /* surfaces - page, then the card ladder */
+  --page: light-dark(var(--n-94), var(--n-4));
+  --surface-container-lowest: light-dark(var(--n-100), var(--n-12));
+  --surface-container-low: light-dark(var(--n-96), var(--n-17));
+  --surface-container: light-dark(var(--n-92), var(--n-20));
+  --surface-container-high: light-dark(var(--n-90), var(--n-22));
+  --surface-container-highest: light-dark(var(--n-87), var(--n-24));
+
+  /* text - three opaque tiers, each verified against both --page and the card */
+  --label: light-dark(var(--n-10), var(--n-90));
+  --label-2: light-dark(var(--nv-30), var(--nv-80));
+  --label-3: light-dark(var(--nv-40), var(--nv-70));
+
+  /* boundaries */
+  --outline: light-dark(var(--nv-50), var(--nv-60));
+  --outline-variant: light-dark(var(--nv-80), var(--nv-30));
+  --separator: light-dark(rgb(0 0 0 / 0.12), rgb(255 255 255 / 0.14));
+  --separator-opaque: light-dark(var(--nv-80), var(--nv-30));
+
+  /* Apple fill tiers - translucent, for shapes rather than text: switch tracks,
+     the meter groove, zebra striping. Alpha so they composite over any surface. */
+  --fill-1: light-dark(rgb(0 0 0 / 0.2), rgb(255 255 255 / 0.24));
+  --fill-2: light-dark(rgb(0 0 0 / 0.14), rgb(255 255 255 / 0.17));
+  --fill-3: light-dark(rgb(0 0 0 / 0.09), rgb(255 255 255 / 0.11));
+  /* Zebra striping. Deliberately faint: its job is to help the eye track across a wide
+     row, not to divide the table into bands. At 4.5% it was only 1.4x lighter than the
+     hover state, so the two competed and a striped row read as a hovered one. */
+  --fill-4: light-dark(rgb(0 0 0 / 0.025), rgb(255 255 255 / 0.032));
+
+  /* state layers.
+     Two forms, because they are painted two different ways:
+       - the *colour* tokens are for table rows, which composite state through stacked
+         background-images (see the note above the table block in components.css);
+       - the *opacity* numbers are for everything else, where a ::before overlay tinted
+         with the element's own currentColor is the Material 3 treatment.
+
+     Hover has to stay clearly louder than the zebra tier above it, or pointing at a row
+     says nothing - but it is a pointer cue, not a selection, so it should not read as
+     loudly as one. Roughly 2.5x the zebra step lands in between: unmistakable when you
+     look for it, quiet when you are not. */
+  --state-hover: light-dark(rgb(74 78 186 / 0.09), rgb(184 194 254 / 0.11));
+  --state-press: light-dark(rgb(74 78 186 / 0.15), rgb(184 194 254 / 0.17));
+  --state-opacity-hover: 0.08;
+  --state-opacity-press: 0.13;
+
+  /* The switch knob is white in both schemes, as it is on iOS: it reads as a physical
+     object sitting on the track rather than as a themed surface. */
+  --switch-knob: #ffffff;
+  --shadow-inset: light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.34));
+
+  /* 0.45/0.42 rather than a lighter wash: a scrollbar thumb indicates position, so it
+     is a meaningful control and owes 3:1. At 0.32 it measured 2.20:1 in both schemes. */
+  --thumb: light-dark(rgb(0 0 0 / 0.45), rgb(255 255 255 / 0.42));
+
+  --scrim: rgb(0 0 0 / 0.4);
+  --focus-ring: light-dark(var(--p-40), var(--p-80));
+
+  /* Materials - Apple's translucent chrome, approximated. The blur radius and the
+     saturation boost are the widely-used approximation of the "regular" material; Apple
+     publishes the concept, not the numbers. The tint has to be opaque enough that text
+     on it still clears 4.5:1 when the blur is absent, because that is the fallback and
+     the reduced-transparency case. */
+  --material-tint: light-dark(rgb(237 238 241 / 0.72), rgb(20 20 22 / 0.72));
+  --material-tint-opaque: light-dark(var(--n-94), var(--n-6));
+  --material-blur: blur(20px) saturate(180%);
+}
+
+/* ------------------------------------------------------------------- 2 scales */
+:root {
+  /* type. System stacks only - both design systems prescribe the platform face,
+     and it keeps the page free of network requests. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto,
+    system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+
+  /* spacing.
+     A 4dp grid with 2 and 6 permitted as half-steps for tight internal gaps, which is
+     what both systems do in practice. Named for their pixel size at the default text
+     size but *valued* in rem, so the whole rhythm scales with the reader's browser font
+     setting - a px grid silently breaks under text-only zoom, which is exactly the
+     setting Dynamic Type exists to serve. Never set a px font-size on :root. */
+  --space-2: 0.125rem;
+  --space-4: 0.25rem;
+  --space-6: 0.375rem;
+  --space-8: 0.5rem;
+  --space-12: 0.75rem;
+  --space-16: 1rem;
+  --space-20: 1.25rem;
+  --space-24: 1.5rem;
+  --space-32: 2rem;
+  --space-40: 2.5rem;
+  --space-48: 3rem;
+  --space-56: 3.5rem;
+  --space-64: 4rem;
+  --space-80: 5rem;
+
+  /* type. Apple's Dynamic Type steps, in rem. The page keeps a 16px body (Callout in
+     Apple's table) rather than adopting the 17px Body step, because the dense tables
+     were laid out against it; the point of the scale is that every size is now a real
+     step rather than an arbitrary number. */
+  --text-caption-2: 0.6875rem;
+  --text-caption: 0.75rem;
+  --text-footnote: 0.8125rem;
+  --text-subhead: 0.9375rem;
+  --text-callout: 1rem;
+  --text-body: 1.0625rem;
+  --text-title-3: 1.25rem;
+  --text-title-2: 1.375rem;
+  --text-title-1: 1.75rem;
+
+  /* Minimum hit area. Apple asks 44px, Material 48dp; 44 is the floor either way. */
+  --tap-min: 44px;
+
+  /* Sticky chrome.
+     The nav used to wrap to a second line at narrow widths, so its height was not
+     knowable in CSS and JS had to measure it and publish --navh on every resize. The nav
+     is now a single scrollable row, which makes the height a constant - so these are
+     plain tokens and the measuring code is gone. In rem so the stack stays correct when
+     the reader scales text rather than the whole page. */
+  --nav-item-h: 2.375rem;
+  --nav-h: calc(var(--nav-item-h) + var(--space-4) * 2);
+  --sticky-top: var(--space-12);
+  --sticky-gap: var(--space-8);
+  /* where the meter sits: below the nav */
+  --meter-top: calc(var(--sticky-top) + var(--nav-h) + var(--sticky-gap));
+  /* the meter's own height, used only to keep anchor targets clear of it */
+  --meter-h: 4.25rem;
+  /* The theme switcher's height. Same construction as a nav pill - one control row plus
+     a 4px padding ring - but declared separately, because --nav-h drops to zero on wide
+     screens where the pill bar is hidden and the switcher stays. */
+  --seg-h: calc(var(--nav-item-h) + var(--space-4) * 2);
+  /* Where the sidebar starts. Level with the <h1>, not with the top of the window: the
+     hero's top padding, the topline row the switcher sits in, and the gap under it. */
+  --toc-top: calc(var(--space-48) + var(--seg-h) + var(--space-20));
+  /* width of the wide-screen table of contents */
+  --toc-w: 15rem;
+
+  /* shape - Material 3's scale */
+  --shape-xs: 4px;
+  --shape-sm: 8px;
+  --shape-md: 12px;
+  --shape-lg: 16px;
+  --shape-xl: 28px;
+  --shape-full: 999px;
+
+  /* elevation. Geometry is identical in both schemes; only the shadow colour changes,
+     because in dark mode elevation is carried by the surface ladder above, not by a
+     shadow nobody can see against near-black. */
+  --shadow-key: light-dark(rgb(0 0 0 / 0.09), rgb(0 0 0 / 0.44));
+  --shadow-ambient: light-dark(rgb(0 0 0 / 0.07), rgb(0 0 0 / 0.36));
+  --elev-1: 0 1px 2px var(--shadow-key), 0 1px 3px 1px var(--shadow-ambient);
+  --elev-2: 0 1px 2px var(--shadow-key), 0 2px 6px 2px var(--shadow-ambient);
+  --elev-3: 0 1px 3px var(--shadow-key), 0 4px 8px 3px var(--shadow-ambient);
+
+  /* motion - Material 3 easing and duration tokens */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --dur-short: 150ms;
+  --dur-medium: 250ms;
+  --dur-long: 400ms;
+
+  /* z-index. One place, so "which bar is on top" stops being guesswork. */
+  --z-sticky-meter: 40;
+  --z-sticky-nav: 45;
+  --z-popover: 60;
+}
+
+
+/* ------------------------------------------------------------------- fallback */
+/*
+  Without light-dark() support a custom property holding it still *parses* - custom
+  properties accept almost any token stream - and then fails invalid-at-computed-value
+  time when it is substituted, resolving to unset. That is a broken page, not a
+  fallback to light mode, and the usual two-declaration trick does not help because it
+  only works on real properties, not custom ones.
+
+  So: restate the handful of tokens that carry the page in plain light-mode hexes.
+  Old engines get a flat but entirely readable light page.
+*/
+@supports not (color: light-dark(#000, #fff)) {
+  :root {
+    --page: #edeef1;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f3f3f7;
+    --surface-container: #e7e8ec;
+    --surface-container-high: #e1e2e6;
+    --surface-container-highest: #d9dade;
+    --label: #1b1b1d;
+    --label-2: #444651;
+    --label-3: #5b5d6c;
+    --outline: #737687;
+    --outline-variant: #c3c6d3;
+    --primary: #4a4eba;
+    --on-primary: #ffffff;
+    --primary-container: #dbe1fe;
+    --on-primary-container: #373a8e;
+    --success: #047230;
+    --success-container: #bcf3c5;
+    --on-success-container: #025623;
+    --success-surface: rgb(3 143 62 / 0.1);
+    --caution: #884e01;
+    --error: #aa2320;
+    --error-container: #fed8d3;
+    --on-error-container: #821916;
+    --error-surface: rgb(208 54 48 / 0.1);
+    --focus-ring: #4a4eba;
+    --separator: rgb(0 0 0 / 0.12);
+    --fill-1: rgb(0 0 0 / 0.2);
+    --fill-2: rgb(0 0 0 / 0.14);
+    --fill-3: rgb(0 0 0 / 0.09);
+    --fill-4: rgb(0 0 0 / 0.045);
+    --state-hover: rgb(74 78 186 / 0.09);
+    --state-press: rgb(74 78 186 / 0.14);
+    --thumb: rgb(0 0 0 / 0.45);
+    --shadow-key: rgb(0 0 0 / 0.09);
+    --shadow-ambient: rgb(0 0 0 / 0.07);
+    --shadow-inset: rgb(0 0 0 / 0.12);
+  }
+}

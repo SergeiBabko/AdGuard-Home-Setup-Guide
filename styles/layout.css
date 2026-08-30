@@ -1,0 +1,173 @@
+/* ============================================================================
+   layout.css
+   Page shell and hero: the containers everything else sits inside.
+   ---------------------------------------------------------------------------- */
+
+/* ---------- table of contents ----------
+   Hidden below the breakpoint, where the pill nav does the job. Above it, .page becomes
+   a two-column grid and the aside takes column 1.
+
+   A grid wrapper rather than a fixed-position aside on purpose. Positioning a fixed
+   aside means computing `left: max(0px, (100vw - <shell>) / 2)`, and 100vw *includes the
+   scrollbar* - so on Windows the sidebar is offset by ~15px or the page gains a
+   horizontal scrollbar. The grid needs no viewport arithmetic at all, and it puts the
+   two sticky bars in column 2, which means they can never overlap the sidebar. */
+.toc {
+  display: none;
+}
+@media (min-width: 1400px) {
+  .page {
+    display: grid;
+    grid-template-columns: var(--toc-w) minmax(0, 1fr);
+    align-items: start;
+    /* Cap and centre the sidebar and the content TOGETHER. Without this the grid is as
+       wide as the window while .shell centres itself inside column 2, so on a wide screen
+       the sidebar is pinned to the window edge with a growing void beside it. Capping the
+       pair keeps the sidebar next to what it points at. */
+    max-width: calc(1640px + var(--toc-w));
+    margin-inline: auto;
+  }
+  /* minmax(0, 1fr) above is load-bearing: the blocklist tables carry min-width: 1080px,
+     and a plain 1fr track takes its minimum from the content, so the column would blow
+     past the viewport and the whole page would scroll sideways.
+
+     All the content sits in a single .page-main item rather than being placed directly
+     into the grid. That matters for the sticky bars: a sticky grid item is confined to
+     its own grid area, so a nav in a row of its own would have exactly its own height to
+     travel in - it would stop sticking entirely above this breakpoint. Inside one tall
+     item, their containing block is the full content height again. */
+  .page-main {
+    grid-column: 2;
+    min-width: 0;
+  }
+  .toc {
+    display: block;
+    grid-column: 1;
+    grid-row: 1 / -1;
+    position: sticky;
+    top: var(--sticky-top);
+    align-self: start;
+    /* Room for the sticky offset above it and an equal breath below, so a long list
+       scrolls inside the card instead of running off the bottom of the window. */
+    max-height: calc(100dvh - var(--sticky-top) - var(--space-24));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* A card, like the rule cards in the hero: same surface, radius and elevation. The
+       left margin is the page gutter; there is no right margin, so the only gap between
+       the card and the text is .shell's own padding. */
+    margin: var(--toc-top) 0 var(--space-24) clamp(var(--space-20), 3.4vw, var(--space-56));
+    padding: var(--space-16) var(--space-12);
+    background: var(--surface-container-lowest);
+    border-radius: var(--shape-lg);
+    box-shadow: var(--elev-1);
+  }
+  .toc-h {
+    margin: 0 0 var(--space-12) var(--space-12);
+    font-size: var(--text-caption);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--label-3);
+  }
+  .toc nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .toc a {
+    position: relative;
+    isolation: isolate;
+    display: block;
+    padding: var(--space-6) var(--space-12);
+    border-radius: var(--shape-sm);
+    font-size: var(--text-footnote);
+    font-weight: 600;
+    color: var(--label-2);
+    transition: color var(--dur-medium) var(--ease-standard);
+  }
+  .toc a::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-short) var(--ease-standard);
+  }
+  .toc a:hover::before {
+    opacity: var(--state-opacity-hover);
+  }
+  .toc a:active::before {
+    opacity: var(--state-opacity-press);
+  }
+  .toc a.act {
+    background: var(--primary-container);
+    color: var(--on-primary-container);
+  }
+  .toc-sub {
+    margin-left: var(--space-12);
+    font-weight: 500;
+  }
+}
+
+.shell {
+  max-width: 1640px;
+  margin: 0 auto;
+  padding: 0 clamp(var(--space-20), 3.4vw, var(--space-56)) clamp(var(--space-20), 3.4vw, var(--space-56));
+}
+.shell.top {
+  padding-bottom: 0;
+}
+
+/* ---------- hero ---------- */
+.hero {
+  padding: var(--space-48) 0 var(--space-4);
+}
+.topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-16);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-20);
+}
+.eyebrow {
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--label-2);
+  margin: 0;
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+}
+.eyebrow span {
+  width: 16px;
+  height: 16px;
+  /* ../ because a url() resolves against the STYLESHEET, not the document. This rule used
+     to live in /styles.css, where "favicon.ico" was right; splitting the file into
+     /styles/ silently repointed it at /styles/favicon.ico and the icon vanished. */
+  background: url("../favicon.ico") center / contain no-repeat;
+}
+h1 {
+  font-size: clamp(2.25rem, 5.8vw, 3.875rem);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.032em;
+  margin: 0 0 var(--space-20);
+}
+h1 em {
+  font-style: normal;
+  display: block;
+  color: var(--label-3);
+}
+.lede {
+  font-size: clamp(var(--text-callout), 1.9vw, var(--text-body));
+  margin: 0 0 var(--space-16);
+  color: var(--label-2);
+}
+.lede strong {
+  font-weight: 600;
+  color: var(--label);
+}
